@@ -4,11 +4,24 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>의사결정 트리 알고리즘</title>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="react.production.min.js"></script>
+  <script src="react-dom.production.min.js"></script>
+  <script src="babel.min.js"></script>
+  <script src="tailwindcss.js"></script>
   <style>
+    .popup { 
+      position: fixed; 
+      background-color: #374151; 
+      color: white; 
+      padding: 8px 12px; 
+      border-radius: 6px; 
+      font-size: 0.9em; 
+      font-weight: bold; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3); 
+      z-index: 1000; 
+      pointer-events: none; 
+      transition: opacity 0.3s ease; 
+    }
     body { 
       font-family: 'Malgun Gothic', sans-serif; 
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -63,6 +76,9 @@
       const [selectedClass, setSelectedClass] = useState(1);
       const [tree, setTree] = useState(null);
       const [hovered, setHovered] = useState(null);
+
+      const [showPopup, setShowPopup] = useState(false);
+      const [popupPos, setPopupPos] = useState({x:0, y:0});
       
       // Tree parameters
       const [minLeafInstances, setMinLeafInstances] = useState(2);
@@ -207,51 +223,111 @@
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
-        // Draw grid
-        ctx.strokeStyle = '#e0e7ff';
-        ctx.lineWidth = 1;
-        for (let i = 0; i <= 10; i++) {
-          const x = PADDING + (WIDTH - 2 * PADDING) * i / 10;
-          const y = PADDING + (HEIGHT - 2 * PADDING) * i / 10;
+        // 1. X축 눈금선 + 숫자 (맨 위에 표시)
+        ctx.strokeStyle = '#e0e7ff';     // 중간 회색 선
+        ctx.lineWidth = 0.8;
+        ctx.font = '12px Malgun Gothic';
+        ctx.fillStyle = '#1f2937';       // 진한 숫자
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+
+        for (let i = 0; i <= 6; i++) {
+          const x = PADDING + (WIDTH - 2 * PADDING) * (i / 6);
+          const value = i * 100;
+
+        // 세로 눈금선
           ctx.beginPath();
           ctx.moveTo(x, PADDING);
           ctx.lineTo(x, HEIGHT - PADDING);
           ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(PADDING, y);
-          ctx.lineTo(WIDTH - PADDING, y);
-          ctx.stroke();
-        }
 
-        // Draw decision boundaries
-        if (tree) {
-          const drawBoundaries = (node, minX, maxX, minY, maxY) => {
-            if (!node || node.type === 'leaf') return;
+        // 위쪽에 X축 숫자 (캔버스 맨 위에서 10px 아래)
+        ctx.fillText(value, x, PADDING - 10);
+      }
 
-            if (node.axis === 'x') {
-              ctx.strokeStyle = '#16a34a';
-              ctx.lineWidth = 3;
-              ctx.beginPath();
-              ctx.moveTo(node.threshold, minY);
-              ctx.lineTo(node.threshold, maxY);
-              ctx.stroke();
+      // 2. Y축 눈금선 + 숫자 (왼쪽에 표시, 위→아래로 0, 100, 200, ..., 500)
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.font = '12px Malgun Gothic';
 
-              drawBoundaries(node.left, minX, node.threshold, minY, maxY);
-              drawBoundaries(node.right, node.threshold, maxX, minY, maxY);
-            } else {
-              ctx.strokeStyle = '#16a34a';
-              ctx.lineWidth = 3;
-              ctx.beginPath();
-              ctx.moveTo(minX, node.threshold);
-              ctx.lineTo(maxX, node.threshold);
-              ctx.stroke();
+      for (let i = 0; i <= 5; i++) {
+        const y = PADDING + (HEIGHT - 2 * PADDING) * (i / 5);  // 50, 130, 210, 290, 370, 450
+        const value = i * 100;                                 // ← 여기만 바꿨습니다!
+                                                          // 0, 100, 200, 300, 400, 500
 
-              drawBoundaries(node.left, minX, maxX, minY, node.threshold);
-              drawBoundaries(node.right, minX, maxX, node.threshold, maxY);
-            }
-          };
+        // 가로 눈금선
+        ctx.beginPath();
+        ctx.moveTo(PADDING, y);
+        ctx.lineTo(WIDTH - PADDING, y);
+        ctx.stroke();
 
-          drawBoundaries(tree, PADDING, WIDTH - PADDING, PADDING, HEIGHT - PADDING);
+        // 왼쪽에 Y축 숫자 (캔버스 왼쪽 바깥쪽)
+        ctx.fillText(value, PADDING - 12, y);
+      }
+
+      // 보너스: 축 자체를 조금 더 진하게 (선택사항)
+      ctx.strokeStyle = '#e0e7ff';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(PADDING, PADDING);                    // 위쪽 X축
+      ctx.lineTo(WIDTH - PADDING, PADDING);
+      ctx.moveTo(PADDING, PADDING);                    // 왼쪽 Y축
+      ctx.lineTo(PADDING, HEIGHT - PADDING);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#e0e7ff';   // 연한 파란색 그대로
+      ctx.lineWidth = 1.8;
+
+      // 1. 세로선 (X축 50단위)
+      for (let x = 0; x <= 600; x += 50) {
+        const canvasX = PADDING + (x / 600) * (WIDTH - 2 * PADDING);
+        ctx.beginPath();
+        ctx.moveTo(canvasX, PADDING);
+        ctx.lineTo(canvasX, HEIGHT - PADDING);
+        ctx.stroke();
+      }
+
+      // 2. 가로선 (Y축 50단위)
+      for (let y = 0; y <= 500; y += 50) {
+        const canvasY = PADDING + (y / 500) * (HEIGHT - 2 * PADDING);
+        ctx.beginPath();
+        ctx.moveTo(PADDING, canvasY);
+        ctx.lineTo(WIDTH - PADDING, canvasY);
+        ctx.stroke();
+      }
+
+      // Draw decision boundaries
+      if (tree) {
+        const drawBoundaries = (node, minX = 0, maxX = 600, minY = 0, maxY = 500) => {
+  if (!node || node.type === 'leaf') return;
+
+  const toCanvasX = (x) => PADDING + (x / 600) * (WIDTH - 2 * PADDING);
+  const toCanvasY = (y) => PADDING + (y / 500) * (HEIGHT - 2 * PADDING);
+
+  if (node.axis === 'x') {
+    const lineX = toCanvasX(node.threshold);
+    ctx.strokeStyle = '#16a34a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(lineX, toCanvasY(minY));
+    ctx.lineTo(lineX, toCanvasY(maxY));
+    ctx.stroke();
+
+    drawBoundaries(node.left,  minX, node.threshold, minY, maxY);
+    drawBoundaries(node.right, node.threshold, maxX, minY, maxY);
+  } else {
+    const lineY = toCanvasY(node.threshold);
+    ctx.beginPath();
+    ctx.moveTo(toCanvasX(minX), lineY);
+    ctx.lineTo(toCanvasX(maxX), lineY);
+    ctx.stroke();
+
+    drawBoundaries(node.left,  minX, maxX, minY, node.threshold);
+    drawBoundaries(node.right, minX, maxX, node.threshold, maxY);
+  }
+};
+
+          drawBoundaries(tree, 0, 600, 0, 500);
 
           // Fill regions
           const predictRegion = (x, y, node) => {
@@ -264,19 +340,25 @@
             }
           };
 
-          for (let x = PADDING; x < WIDTH - PADDING; x += 4) {
-            for (let y = PADDING; y < HEIGHT - PADDING; y += 4) {
-              const prediction = predictRegion(x, y, tree);
-              if (prediction === 1) {
-                ctx.fillStyle = 'rgba(239, 68, 68, 0.08)'; // 빨강 (클래스 A)
-              } else if (prediction === -1) {
-                ctx.fillStyle = 'rgba(59, 130, 246, 0.08)'; // 파랑 (클래스 B)
-              } else {
-                ctx.fillStyle = 'rgba(34, 197, 94, 0.08)'; // 초록 (클래스 C)
-              }
-              ctx.fillRect(x, y, 4, 4);
-            }
-          }
+          for (let px = PADDING; px < WIDTH - PADDING; px += 4) {
+  for (let py = PADDING; py < HEIGHT - PADDING; py += 4) {
+    // 캔버스 좌표 → 실제 데이터 좌표 (0~600, 0~500)로 변환
+    const dataX = ((px - PADDING) / (WIDTH - 2 * PADDING)) * 600;
+    const dataY = ((py - PADDING) / (HEIGHT - 2 * PADDING)) * 500;
+
+    const prediction = predictRegion(dataX, dataY, tree);
+
+    if (prediction === 1) {
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.08)';    // 빨강 영역
+    } else if (prediction === -1) {
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.08)';   // 파랑 영역
+    } else {
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.08)';     // 초록 영역
+    }
+    ctx.fillRect(px, py, 4, 4);
+  }
+
+}
         }
 
         // Draw points
@@ -461,6 +543,13 @@
         setTree(null);
       };
 
+      const handleTreeClick = (e) => {
+        const rect = e.target.getBoundingClientRect();
+        setPopupPos({ x: rect.left + 20, y: rect.bottom + 5 });
+        setShowPopup(true);
+        setTimeout(() => setShowPopup(false), 800);
+      };
+
       const redCount = points.filter(p => p.class === 1).length;
       const blueCount = points.filter(p => p.class === -1).length;
       const greenCount = points.filter(p => p.class === 0).length;
@@ -484,6 +573,7 @@
 
       return (
         <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden">
+          {showPopup && <div className="popup" style={{left: popupPos.x, top: popupPos.y, opacity: 1}}>참새다!</div>}
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
             <div className="text-sm mb-2 text-indigo-100">부산진여자상업고등학교 인공지능기초 학습자료</div>
             <h1 className="text-3xl font-bold mb-2">의사결정 트리(Decision Tree)란 무엇일까?</h1>
@@ -748,7 +838,7 @@
 
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                   <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                    <span className="text-xl">🌲</span>
+                    <span className="text-xl" onClick={handleTreeClick} style={{cursor:'pointer'}}>🌲</span>
                     <span>트리 구조</span>
                   </h3>
                   <div className="bg-white rounded-lg shadow-inner p-4 border-2 border-gray-300 overflow-auto" style={{maxHeight: '600px'}}>
