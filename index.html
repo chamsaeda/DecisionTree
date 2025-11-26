@@ -8,6 +8,7 @@
   <script src="react-dom.production.min.js"></script>
   <script src="babel.min.js"></script>
   <script src="tailwindcss.js"></script>
+
   <style>
     .popup { 
       position: fixed; 
@@ -42,30 +43,51 @@
       const WIDTH = 600;
       const HEIGHT = 500;
       const PADDING = 50;
+      
+      // 데이터 좌표 범위
+      const DATA_X_MAX = 600;
+      const DATA_Y_MAX = 500;
+
+      // 좌표 변환 함수들
+      const canvasToDataX = (canvasX) => {
+        return ((canvasX - PADDING) / (WIDTH - 2 * PADDING)) * DATA_X_MAX;
+      };
+      
+      const canvasToDataY = (canvasY) => {
+        return ((canvasY - PADDING) / (HEIGHT - 2 * PADDING)) * DATA_Y_MAX;
+      };
+      
+      const dataToCanvasX = (dataX) => {
+        return PADDING + (dataX / DATA_X_MAX) * (WIDTH - 2 * PADDING);
+      };
+      
+      const dataToCanvasY = (dataY) => {
+        return PADDING + (dataY / DATA_Y_MAX) * (HEIGHT - 2 * PADDING);
+      };
 
       const generateInitialData = () => {
         const initialPoints = [];
         // 클래스 A (빨강) - 왼쪽 위
         for (let i = 0; i < 8; i++) {
           initialPoints.push({
-            x: PADDING + 50 + Math.random() * 150,
-            y: PADDING + 50 + Math.random() * 120,
+            x: 50 + Math.random() * 150,
+            y: 50 + Math.random() * 120,
             class: 1
           });
         }
-        // 클래스 B (파랑) - 오른쪽 아래
+        // 클래스 B (파랑) - 왼쪽 아래
         for (let i = 0; i < 8; i++) {
           initialPoints.push({
-            x: WIDTH - PADDING - 200 + Math.random() * 150,
-            y: HEIGHT - PADDING - 170 + Math.random() * 120,
+            x: 50 + Math.random() * 250,
+            y: 250 + Math.random() * 150,
             class: -1
           });
         }
-        // 클래스 C (초록) - 중앙
+        // 클래스 C (초록) - 오른쪽
         for (let i = 0; i < 8; i++) {
           initialPoints.push({
-            x: WIDTH / 2 - 75 + Math.random() * 150,
-            y: HEIGHT / 2 - 75 + Math.random() * 150,
+            x: 400 + Math.random() * 150,
+            y: 150 + Math.random() * 200,
             class: 0
           });
         }
@@ -156,7 +178,6 @@
         const classBCount = points.filter(p => p.class === -1).length;
         const classCCount = points.filter(p => p.class === 0).length;
         
-        // 가장 많은 클래스 찾기
         const counts = [
           { class: 1, count: classACount },
           { class: -1, count: classBCount },
@@ -223,11 +244,11 @@
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
-        // 1. X축 눈금선 + 숫자 (맨 위에 표시)
-        ctx.strokeStyle = '#e0e7ff';     // 중간 회색 선
+        // X축 눈금선 + 숫자
+        ctx.strokeStyle = '#e0e7ff';
         ctx.lineWidth = 0.8;
         ctx.font = '12px Malgun Gothic';
-        ctx.fillStyle = '#1f2937';       // 진한 숫자
+        ctx.fillStyle = '#1f2937';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
 
@@ -235,99 +256,61 @@
           const x = PADDING + (WIDTH - 2 * PADDING) * (i / 6);
           const value = i * 100;
 
-        // 세로 눈금선
           ctx.beginPath();
           ctx.moveTo(x, PADDING);
           ctx.lineTo(x, HEIGHT - PADDING);
           ctx.stroke();
 
-        // 위쪽에 X축 숫자 (캔버스 맨 위에서 10px 아래)
-        ctx.fillText(value, x, PADDING - 10);
-      }
+          ctx.fillText(value, x, PADDING - 10);
+        }
 
-      // 2. Y축 눈금선 + 숫자 (왼쪽에 표시, 위→아래로 0, 100, 200, ..., 500)
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
-      ctx.font = '12px Malgun Gothic';
+        // Y축 눈금선 + 숫자
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.font = '12px Malgun Gothic';
 
-      for (let i = 0; i <= 5; i++) {
-        const y = PADDING + (HEIGHT - 2 * PADDING) * (i / 5);  // 50, 130, 210, 290, 370, 450
-        const value = i * 100;                                 // ← 여기만 바꿨습니다!
-                                                          // 0, 100, 200, 300, 400, 500
+        for (let i = 0; i <= 5; i++) {
+          const y = PADDING + (HEIGHT - 2 * PADDING) * (i / 5);
+          const value = i * 100;
 
-        // 가로 눈금선
-        ctx.beginPath();
-        ctx.moveTo(PADDING, y);
-        ctx.lineTo(WIDTH - PADDING, y);
-        ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(PADDING, y);
+          ctx.lineTo(WIDTH - PADDING, y);
+          ctx.stroke();
 
-        // 왼쪽에 Y축 숫자 (캔버스 왼쪽 바깥쪽)
-        ctx.fillText(value, PADDING - 12, y);
-      }
+          ctx.fillText(value, PADDING - 12, y);
+        }
 
-      // 보너스: 축 자체를 조금 더 진하게 (선택사항)
-      ctx.strokeStyle = '#e0e7ff';
-      ctx.lineWidth = 0.8;
-      ctx.beginPath();
-      ctx.moveTo(PADDING, PADDING);                    // 위쪽 X축
-      ctx.lineTo(WIDTH - PADDING, PADDING);
-      ctx.moveTo(PADDING, PADDING);                    // 왼쪽 Y축
-      ctx.lineTo(PADDING, HEIGHT - PADDING);
-      ctx.stroke();
+        // Draw decision boundaries
+        if (tree) {
+          const drawBoundaries = (node, minX = 0, maxX = DATA_X_MAX, minY = 0, maxY = DATA_Y_MAX) => {
+            if (!node || node.type === 'leaf') return;
 
-      ctx.strokeStyle = '#e0e7ff';   // 연한 파란색 그대로
-      ctx.lineWidth = 1.8;
+            ctx.strokeStyle = '#16a34a';
+            ctx.lineWidth = 3;
 
-      // 1. 세로선 (X축 50단위)
-      for (let x = 0; x <= 600; x += 50) {
-        const canvasX = PADDING + (x / 600) * (WIDTH - 2 * PADDING);
-        ctx.beginPath();
-        ctx.moveTo(canvasX, PADDING);
-        ctx.lineTo(canvasX, HEIGHT - PADDING);
-        ctx.stroke();
-      }
+            if (node.axis === 'x') {
+              const lineX = dataToCanvasX(node.threshold);
+              ctx.beginPath();
+              ctx.moveTo(lineX, dataToCanvasY(minY));
+              ctx.lineTo(lineX, dataToCanvasY(maxY));
+              ctx.stroke();
 
-      // 2. 가로선 (Y축 50단위)
-      for (let y = 0; y <= 500; y += 50) {
-        const canvasY = PADDING + (y / 500) * (HEIGHT - 2 * PADDING);
-        ctx.beginPath();
-        ctx.moveTo(PADDING, canvasY);
-        ctx.lineTo(WIDTH - PADDING, canvasY);
-        ctx.stroke();
-      }
+              drawBoundaries(node.left, minX, node.threshold, minY, maxY);
+              drawBoundaries(node.right, node.threshold, maxX, minY, maxY);
+            } else {
+              const lineY = dataToCanvasY(node.threshold);
+              ctx.beginPath();
+              ctx.moveTo(dataToCanvasX(minX), lineY);
+              ctx.lineTo(dataToCanvasX(maxX), lineY);
+              ctx.stroke();
 
-      // Draw decision boundaries
-      if (tree) {
-        const drawBoundaries = (node, minX = 0, maxX = 600, minY = 0, maxY = 500) => {
-  if (!node || node.type === 'leaf') return;
+              drawBoundaries(node.left, minX, maxX, minY, node.threshold);
+              drawBoundaries(node.right, minX, maxX, node.threshold, maxY);
+            }
+          };
 
-  const toCanvasX = (x) => PADDING + (x / 600) * (WIDTH - 2 * PADDING);
-  const toCanvasY = (y) => PADDING + (y / 500) * (HEIGHT - 2 * PADDING);
-
-  if (node.axis === 'x') {
-    const lineX = toCanvasX(node.threshold);
-    ctx.strokeStyle = '#16a34a';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(lineX, toCanvasY(minY));
-    ctx.lineTo(lineX, toCanvasY(maxY));
-    ctx.stroke();
-
-    drawBoundaries(node.left,  minX, node.threshold, minY, maxY);
-    drawBoundaries(node.right, node.threshold, maxX, minY, maxY);
-  } else {
-    const lineY = toCanvasY(node.threshold);
-    ctx.beginPath();
-    ctx.moveTo(toCanvasX(minX), lineY);
-    ctx.lineTo(toCanvasX(maxX), lineY);
-    ctx.stroke();
-
-    drawBoundaries(node.left,  minX, maxX, minY, node.threshold);
-    drawBoundaries(node.right, minX, maxX, node.threshold, maxY);
-  }
-};
-
-          drawBoundaries(tree, 0, 600, 0, 500);
+          drawBoundaries(tree);
 
           // Fill regions
           const predictRegion = (x, y, node) => {
@@ -341,38 +324,39 @@
           };
 
           for (let px = PADDING; px < WIDTH - PADDING; px += 4) {
-  for (let py = PADDING; py < HEIGHT - PADDING; py += 4) {
-    // 캔버스 좌표 → 실제 데이터 좌표 (0~600, 0~500)로 변환
-    const dataX = ((px - PADDING) / (WIDTH - 2 * PADDING)) * 600;
-    const dataY = ((py - PADDING) / (HEIGHT - 2 * PADDING)) * 500;
+            for (let py = PADDING; py < HEIGHT - PADDING; py += 4) {
+              const dataX = canvasToDataX(px);
+              const dataY = canvasToDataY(py);
 
-    const prediction = predictRegion(dataX, dataY, tree);
+              const prediction = predictRegion(dataX, dataY, tree);
 
-    if (prediction === 1) {
-      ctx.fillStyle = 'rgba(239, 68, 68, 0.08)';    // 빨강 영역
-    } else if (prediction === -1) {
-      ctx.fillStyle = 'rgba(59, 130, 246, 0.08)';   // 파랑 영역
-    } else {
-      ctx.fillStyle = 'rgba(34, 197, 94, 0.08)';     // 초록 영역
-    }
-    ctx.fillRect(px, py, 4, 4);
-  }
-
-}
+              if (prediction === 1) {
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.08)';
+              } else if (prediction === -1) {
+                ctx.fillStyle = 'rgba(59, 130, 246, 0.08)';
+              } else {
+                ctx.fillStyle = 'rgba(34, 197, 94, 0.08)';
+              }
+              ctx.fillRect(px, py, 4, 4);
+            }
+          }
         }
 
         // Draw points
         points.forEach(point => {
+          const canvasX = dataToCanvasX(point.x);
+          const canvasY = dataToCanvasY(point.y);
+          
           ctx.beginPath();
-          ctx.arc(point.x, point.y, 8, 0, 2 * Math.PI);
+          ctx.arc(canvasX, canvasY, 8, 0, 2 * Math.PI);
           if (point.class === 1) {
-            ctx.fillStyle = '#ef4444'; // 빨강
+            ctx.fillStyle = '#ef4444';
             ctx.strokeStyle = '#991b1b';
           } else if (point.class === -1) {
-            ctx.fillStyle = '#3b82f6'; // 파랑
+            ctx.fillStyle = '#3b82f6';
             ctx.strokeStyle = '#1e40af';
           } else {
-            ctx.fillStyle = '#22c55e'; // 초록
+            ctx.fillStyle = '#22c55e';
             ctx.strokeStyle = '#15803d';
           }
           ctx.fill();
@@ -387,7 +371,6 @@
         if (!canvas || !tree) return;
         const ctx = canvas.getContext('2d');
         
-        // 트리의 실제 깊이 계산
         let currentMaxDepth = 0;
         const calcDepth = (node, depth = 0) => {
             if (!node) return;
@@ -397,19 +380,16 @@
         };
         calcDepth(tree);
 
-        // 트리 크기에 따라 캔버스 크기 재설정
         const levelHeight = 80;
         const minWidth = 800;
         const minHeight = 400;
         
-        // 깊어질수록 너비와 높이를 늘림
         const requiredWidth = Math.max(minWidth, Math.pow(2, Math.min(currentMaxDepth, 8)) * 60);
         const requiredHeight = Math.max(minHeight, (currentMaxDepth + 2) * levelHeight);
 
         canvas.width = requiredWidth;
         canvas.height = requiredHeight;
 
-        // 크기 변경 후 초기화
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         let nodeCount = 0;
@@ -472,11 +452,11 @@
           
           if (node.type === 'leaf') {
             if (node.class === 1) {
-              ctx.fillStyle = '#ef4444'; // 빨강
+              ctx.fillStyle = '#ef4444';
             } else if (node.class === -1) {
-              ctx.fillStyle = '#3b82f6'; // 파랑
+              ctx.fillStyle = '#3b82f6';
             } else {
-              ctx.fillStyle = '#22c55e'; // 초록
+              ctx.fillStyle = '#22c55e';
             }
           } else {
             ctx.fillStyle = '#a855f7';
@@ -494,14 +474,14 @@
           
           if (node.type === 'leaf') {
             ctx.font = '18px Malgun Gothic';
-            ctx.fillText(`${node.points.length}개`, nodeX, nodeY );
+            ctx.fillText(`${node.points.length}개`, nodeX, nodeY);
           } else {
             ctx.fillStyle = 'black';   
             ctx.fillText(node.axis === 'x' ? 'X' : 'Y', nodeX, nodeY - 15);
             ctx.font = '18px Malgun Gothic';
             ctx.fillText(Math.round(node.threshold), nodeX, nodeY);
             ctx.font = '18px Malgun Gothic';  
-            ctx.fillText(`${node.points.length}개`, nodeX, nodeY + 18);  
+            ctx.fillText(`${node.points.length}개`, nodeX, nodeY + 18);
           }
         };
 
@@ -512,11 +492,13 @@
         const rect = canvasRef.current.getBoundingClientRect();
         const scaleX = WIDTH / rect.width;
         const scaleY = HEIGHT / rect.height;
-        const x = (e.clientX - rect.left) * scaleX;
-        const y = (e.clientY - rect.top) * scaleY;
+        const canvasX = (e.clientX - rect.left) * scaleX;
+        const canvasY = (e.clientY - rect.top) * scaleY;
         
-        if (x >= PADDING && x <= WIDTH - PADDING && y >= PADDING && y <= HEIGHT - PADDING) {
-          setPoints([...points, { x, y, class: selectedClass }]);
+        if (canvasX >= PADDING && canvasX <= WIDTH - PADDING && canvasY >= PADDING && canvasY <= HEIGHT - PADDING) {
+          const dataX = canvasToDataX(canvasX);
+          const dataY = canvasToDataY(canvasY);
+          setPoints([...points, { x: dataX, y: dataY, class: selectedClass }]);
           setTree(null);
         }
       };
@@ -525,12 +507,14 @@
         const rect = canvasRef.current.getBoundingClientRect();
         const scaleX = WIDTH / rect.width;
         const scaleY = HEIGHT / rect.height;
-        const mx = (e.clientX - rect.left) * scaleX;
-        const my = (e.clientY - rect.top) * scaleY;
+        const canvasX = (e.clientX - rect.left) * scaleX;
+        const canvasY = (e.clientY - rect.top) * scaleY;
 
         let found = null;
         for (let p of points) {
-          if (Math.hypot(mx - p.x, my - p.y) <= 10) {
+          const px = dataToCanvasX(p.x);
+          const py = dataToCanvasY(p.y);
+          if (Math.hypot(canvasX - px, canvasY - py) <= 10) {
             found = p;
             break;
           }
@@ -554,7 +538,6 @@
       const blueCount = points.filter(p => p.class === -1).length;
       const greenCount = points.filter(p => p.class === 0).length;
 
-      // Count tree statistics
       const countTreeStats = (node) => {
         if (!node) return { nodes: 0, leaves: 0, maxDepth: 0 };
         if (node.type === 'leaf') {
@@ -782,7 +765,7 @@
                       className="block w-full cursor-crosshair" />
                     {hovered && (
                       <div className="absolute bg-gray-900 text-white text-xs px-3 py-1 rounded-md pointer-events-none shadow-lg"
-                        style={{ left: hovered.x + 15, top: hovered.y - 10 }}>
+                        style={{ left: dataToCanvasX(hovered.x) + 15, top: dataToCanvasY(hovered.y) - 10 }}>
                         {hovered.class === 1 ? '클래스 A' : hovered.class === -1 ? '클래스 B' : '클래스 C'}
                       </div>
                     )}
@@ -816,7 +799,7 @@
                           <p className="text-sm font-semibold text-indigo-900 mb-2">💡 어떻게 작동하나요?</p>
                           <p className="text-sm text-gray-700 leading-relaxed">
                             의사결정 트리는 <span className="font-bold text-blue-600">데이터를 가장 잘 나눌 수 있는 질문</span>을 
-                            찾아요. "X좌표가 {Math.round((WIDTH-2*PADDING)/2 + PADDING)}보다 작나요?" 같은 질문으로 
+                            찾아요. "X좌표가 300보다 작나요?" 같은 질문으로 
                             데이터를 <span className="font-bold text-green-600">순수한 그룹</span>으로 나누려고 해요. 
                             모든 데이터가 같은 클래스가 되거나, 더 이상 나눌 수 없을 때까지 이 과정을 반복합니다!
                           </p>
@@ -887,7 +870,7 @@
                   <h3 className="text-lg font-bold text-purple-900 mb-3">🧠 파라미터가 트리에 미치는 영향</h3>
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="bg-white p-4 rounded-lg shadow-sm">
-                      <h4 className="font-bold text-purple-600 mb-2">🔢 리프 노드 최소 개수<br/><span className="text-lg">(Min. number of instances in leaves)</span></h4>
+                      <h4 className="font-bold text-purple-600 mb-2">🔢 리프 노드 최소 개수</h4>
                       <p className="text-sm text-gray-700">
                         마지막 노드(리프)에 있어야 하는 최소 데이터 개수예요. 
                         <span className="font-bold text-blue-600"> 값이 크면</span> 트리가 단순해지고, 
@@ -895,8 +878,7 @@
                       </p>
                     </div>
                     <div className="bg-white p-4 rounded-lg shadow-sm">
-                      <h4 className="font-bold text-purple-600 mb-2">📏 최소 분할 크기
-<br/><span className="text-lg">(Do not split subsets smaller than)</span></h4>
+                      <h4 className="font-bold text-purple-600 mb-2">🔍 최소 분할 크기</h4>
                       <p className="text-sm text-gray-700">
                         이 크기보다 작은 그룹은 더 이상 나누지 않아요. 
                         <span className="font-bold text-blue-600"> 값이 크면</span> 일찍 멈춰서 단순한 트리가 되고, 
@@ -904,8 +886,7 @@
                       </p>
                     </div>
                     <div className="bg-white p-4 rounded-lg shadow-sm">
-                      <h4 className="font-bold text-purple-600 mb-2">📊 최대 깊이<br/>
-<span className="text-lg">(Limit the maximal tree depth to)</span></h4>
+                      <h4 className="font-bold text-purple-600 mb-2">📊 최대 깊이</h4>
                       <p className="text-sm text-gray-700">
                         트리가 얼마나 깊어질 수 있는지 제한해요. 
                         <span className="font-bold text-blue-600"> 깊이가 작으면</span> 단순한 트리, 
@@ -913,7 +894,7 @@
                       </p>
                     </div>
                     <div className="bg-white p-4 rounded-lg shadow-sm">
-                      <h4 className="font-bold text-purple-600 mb-2">🎯 다수 기준(%)<br/><span className="text-lg">(Stop when majority reaches [%])</span></h4>
+                      <h4 className="font-bold text-purple-600 mb-2">🎯 다수 기준(%)</h4>
                       <p className="text-sm text-gray-700">
                         한 클래스가 이 비율 이상이면 더 이상 나누지 않아요. 
                         <span className="font-bold text-blue-600"> 90%면</span> 조금만 섞여도 계속 나누고, 
